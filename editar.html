@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Editar Laudo - ConnectLab</title>
+  <script src="https://cdn.tiny.cloud/1/tdge0xoszz6lmzcrdgcrpng4szzj2xb45mfgzhbs6r35xx5u/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+  <script type="module">
+    import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+    // Credenciais do projeto Supabase do ConnectLab
+    const supabaseUrl = 'https://goqupkiczwrshvuogjhp.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdvcXVwa2ljendyc2h2dW9namhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU1ODkwODIsImV4cCI6MjEwMTE2NTA4Mn0.ofHVSHlC0s2sByYcbPhxdLKrbIQXM7WAb_PXDLqno8I';
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    function getQueryParam(param) {
+      const urlParams = new URLSearchParams(window.location.search);
+      return urlParams.get(param);
+    }
+
+    const sigla = getQueryParam("sigla");
+
+    async function carregarLaudo(sigla) {
+      if (!sigla) return "<p>Sigla não informada.</p>";
+      const { data, error } = await supabase
+        .from('laudos')
+        .select('conteudo')
+        .eq('sigla', sigla)
+        .single();
+      if (error) {
+        console.error(error);
+        return `<p>Erro ao carregar laudo: ${error.message}</p>`;
+      }
+      return data.conteudo || "<p>Laudo vazio.</p>";
+    }
+
+    (async () => {
+      const conteudoInicial = await carregarLaudo(sigla);
+      tinymce.init({
+        selector: '#editor',
+        height: 600,
+        menubar: true,
+        plugins: 'advlist autolink lists link image charmap print preview anchor ' +
+                 'searchreplace visualblocks code fullscreen insertdatetime media table paste code help wordcount lineheight',
+        toolbar: 'undo redo | formatselect | fontselect fontsizeselect | ' +
+                 'bold italic underline strikethrough forecolor backcolor | ' +
+                 'alignleft aligncenter alignright alignjustify | ' +
+                 'bullist numlist outdent indent | removeformat | lineheight | code | help',
+        font_formats: 'Arial=arial,helvetica,sans-serif;' +
+                      'Courier New=courier new,courier,monospace;' +
+                      'Georgia=georgia,palatino,serif;' +
+                      'Tahoma=tahoma,verdana,sans-serif;' +
+                      'Times New Roman=times new roman,times,serif;' +
+                      'Verdana=verdana,geneva,sans-serif',
+        fontsize_formats: '10px 12px 14px 16px 18px 24px 36px',
+        setup: function (editor) {
+          editor.on('Change KeyUp', function () {
+            const conteudo = editor.getContent();
+            window.parent.postMessage(conteudo, "*");
+          });
+        },
+        init_instance_callback: function (editor) {
+          editor.setContent(conteudoInicial);
+        },
+        content_style: `
+          body { font-family: Arial; font-size: 14px; padding: 10px; }
+          p { margin: 0 0 8px 0; }
+          table { border-collapse: collapse !important; }
+          /* Ajuste para tabelas */
+          td, th {
+            border: 1px solid #ccc;
+            padding: 5px;
+            line-height: 1.0 !important;
+          }
+          td p, th p {
+            margin: 0 !important;
+            line-height: inherit !important;
+          }
+        `
+      });
+    })();
+  </script>
+</head>
+<body>
+  <textarea id="editor"></textarea>
+</body>
+</html>
